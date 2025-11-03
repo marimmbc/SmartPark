@@ -9,6 +9,8 @@
 #define EVENT_QUEUE_CAP 3
 #define PENALTY_SOFT_MS 15000
 #define PENALTY_HARD_MS 20000
+#define NPC_MAX 6
+#define NPC_STOP_MS 5000
 
 typedef enum { SECTOR_BALANCO, SECTOR_SORVETE, SECTOR_ESCORREGA, SECTOR_COUNT } SectorType;
 
@@ -30,6 +32,13 @@ typedef struct { Event buf[EVENT_QUEUE_CAP]; int size; } EventQueue;
 
 typedef struct { int top, cap; void** data; } Stack;
 
+typedef struct Npc {
+    Sector* current_sector;
+    uint64_t arrival_ms;
+    int in_queue;
+    int queue_slot;
+} Npc;
+
 typedef struct {
   int score;
   int penalties_soft;
@@ -38,8 +47,13 @@ typedef struct {
   uint64_t now_ms;
   Sector* map_head;
   Sector* player_pos;
+  float player_x;
+  float player_y;
+  uint64_t last_input_ms;
   EventQueue queue;
   Stack* undo;
+  Npc npcs[NPC_MAX];
+  int npc_count;
 } GameState;
 
 typedef struct {

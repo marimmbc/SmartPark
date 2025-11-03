@@ -5,7 +5,8 @@
 typedef enum { FACE_FRONT=0, FACE_BACK=1, FACE_LEFT=2, FACE_RIGHT=3 } FaceDir;
 
 typedef struct {
-    Texture2D front;
+    Texture2D front;       
+    Texture2D front_walk;  
     Texture2D back;
     Texture2D left;
     Texture2D right;
@@ -19,6 +20,6 @@ typedef struct {
 
 int  sprites_load(Sprites* sp, const char* base_path);
 void sprites_unload(Sprites* sp);
-Texture2D sprites_pick(const SpriteSet* set, FaceDir dir);
+Texture2D sprites_pick(const SpriteSet* set, FaceDir dir, int walking_front);
 
 #endif

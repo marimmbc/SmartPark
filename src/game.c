@@ -8,6 +8,28 @@
 static uint64_t now_ms(void){ struct timeval tv; gettimeofday(&tv,NULL); return (uint64_t)tv.tv_sec*1000ULL + tv.tv_usec/1000ULL; }
 static void sleep_ms(int ms){ usleep(ms*1000); }
 
+static int sector_index_from_type(SectorType t){
+  if (t==SECTOR_ESCORREGA) return 0;
+  if (t==SECTOR_SORVETE)   return 1;
+  return 2;
+}
+
+static int sector_has_active_event(const GameState* gs, SectorType t){
+  for(int i=0;i<gs->queue.size;i++){
+    if (gs->queue.buf[i].sector == t) return 1;
+  }
+  return 0;
+}
+
+static int count_waiting_at_sector(const GameState* gs, SectorType t){
+  int c=0;
+  for(int i=0;i<gs->npc_count;i++){
+    const Npc* n=&gs->npcs[i];
+    if (n->in_queue && n->current_sector && n->current_sector->type==t) c++;
+  }
+  return c;
+}
+
 const char* sector_name(SectorType s){
   switch(s){
     case SECTOR_BALANCO: return "BALANCO";
@@ -85,8 +107,12 @@ void game_init(GameState* gs){
   srand((unsigned)gs->start_ms);
   gs->map_head=map_build_3();
   gs->player_pos=gs->map_head;
+  gs->player_x = 450.0f;
+  gs->player_y = 550.0f;
+  gs->last_input_ms = gs->now_ms;
   queue_init(&gs->queue);
   gs->undo=stack_new(64);
+  npcs_init(gs, 6);
 }
 
 void game_shutdown(GameState* gs){
@@ -98,21 +124,40 @@ void game_shutdown(GameState* gs){
   }
 }
 
-void game_tick(GameState* gs){
-  gs->now_ms=now_ms();
-  maybe_generate_events(gs);
-  check_delay_penalties(gs);
-  sleep_ms(10);
-}
-
 void player_move_next(GameState* gs){
   Snapshot s; save_snapshot(gs,&s); stack_push_snap(gs->undo,&s);
   gs->player_pos=step_next(gs->player_pos);
 }
 
+void player_move_prev(GameState* gs){
+  Snapshot s; save_snapshot(gs,&s); stack_push_snap(gs->undo,&s);
+  gs->player_pos = step_prev(gs->player_pos, gs->map_head);
+}
+
+static void sector_pixel_pos(SectorType t, float* outx, float* outy){
+  switch(t){
+    case SECTOR_ESCORREGA: *outx=660.0f; *outy=420.0f; break;
+    case SECTOR_SORVETE:   *outx=450.0f; *outy=270.0f; break;
+    case SECTOR_BALANCO:   *outx=230.0f; *outy=420.0f; break;
+    default: *outx=450.0f; *outy=550.0f; break;
+  }
+}
+
 bool player_handle_top(GameState* gs){
   Event top;
   if(!queue_peek(&gs->queue,&top)) return false;
+
+  float sx, sy; sector_pixel_pos(top.sector, &sx, &sy);
+  float dx = gs->player_x - sx;
+  float dy = gs->player_y - sy;
+  float dist2 = dx*dx + dy*dy;
+  const float R = 80.0f; 
+  if (dist2 > R*R){
+    printf("Aproxime-se do setor [%s] para resolver '%s'.\n",
+           sector_name(top.sector), event_name(top.type));
+    return false;
+  }
+
   Snapshot s; save_snapshot(gs,&s); stack_push_snap(gs->undo,&s);
   uint64_t waited = gs->now_ms - top.enq_ms;
   int base=10;
@@ -123,6 +168,7 @@ bool player_handle_top(GameState* gs){
   return true;
 }
 
+
 bool player_undo(GameState* gs){
   Snapshot s;
   if(!stack_pop_snap(gs->undo,&s)) return false;
@@ -130,7 +176,51 @@ bool player_undo(GameState* gs){
   return true;
 }
 
-void player_move_prev(GameState* gs){
-  Snapshot s; save_snapshot(gs,&s); stack_push_snap(gs->undo,&s);
-  gs->player_pos = step_prev(gs->player_pos, gs->map_head);
+
+void npcs_init(GameState* gs, int count){
+  if (count > NPC_MAX) count = NPC_MAX;
+  gs->npc_count = count;
+  for(int i=0;i<count;i++){
+    gs->npcs[i].current_sector = gs->map_head; 
+    gs->npcs[i].arrival_ms = gs->now_ms;
+    gs->npcs[i].in_queue = 0;
+    gs->npcs[i].queue_slot = 0;
+  }
+}
+
+static void npc_tick_one(GameState* gs, Npc* n){
+  if (!n->current_sector) return;
+
+  if (sector_has_active_event(gs, n->current_sector->type)){
+    if (!n->in_queue){
+      n->in_queue = 1;
+      n->queue_slot = count_waiting_at_sector(gs, n->current_sector->type);
+    }
+    return;
+  }
+
+  if (n->in_queue){
+    n->in_queue = 0;
+    n->arrival_ms = gs->now_ms;
+    return;
+  }
+
+  if (gs->now_ms - n->arrival_ms >= NPC_STOP_MS){
+    n->current_sector = step_next(n->current_sector);
+    n->arrival_ms = gs->now_ms;
+  }
+}
+
+void npcs_tick(GameState* gs){
+  for(int i=0;i<gs->npc_count;i++){
+    npc_tick_one(gs, &gs->npcs[i]);
+  }
+}
+
+void game_tick(GameState* gs){
+  gs->now_ms=now_ms();
+  maybe_generate_events(gs);
+  check_delay_penalties(gs);
+  npcs_tick(gs);
+  sleep_ms(10);
 }
