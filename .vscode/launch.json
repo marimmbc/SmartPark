@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/marianacorreia/parquinho_inteligente/src",
+      "program": "/Users/marianacorreia/parquinho_inteligente/src/build/Debug/outDebug"
+    }
+  ]
+}
