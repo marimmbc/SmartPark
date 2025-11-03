@@ -1,29 +1,46 @@
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 #include "game.h"
-
-static void draw(const GameState* gs){
-  printf("\n=== t=%lus ===\n", (unsigned long)((gs->now_ms - gs->start_ms)/1000));
-  printf("Local: %s | Score: %d | Penalidades: %d leves, %d fortes\n",
-    sector_name(gs->player_pos->type), gs->score, gs->penalties_soft, gs->penalties_hard);
-  printf("Fila (%d/%d):\n", gs->queue.size, EVENT_QUEUE_CAP);
-  for(int i=0;i<gs->queue.size;i++){
-    const Event* e=&gs->queue.buf[i];
-    printf("  %c %s [%s]\n", i==0?'>':' ', event_name(e->type), sector_name(e->sector));
-  }
-  printf("[M]over  [H]andle topo  [U]ndo  [Q]uit\n");
-}
+#include "screen.h"
+#include "keyboard.h"
+#include "ranking.h"
 
 int main(void){
   GameState gs; game_init(&gs);
+  keyboard_init();
   while( (gs.now_ms - gs.start_ms) < (uint64_t)GAME_TOTAL_SECONDS*1000ULL ){
-    game_tick(&gs); draw(&gs);
-    int ch=fgetc(stdin); if(ch==EOF) continue; ch=tolower(ch);
-    if(ch=='m') player_move_next(&gs);
-    else if(ch=='h'){ if(!player_handle_top(&gs)) printf("Nada para resolver.\n"); }
-    else if(ch=='u'){ if(!player_undo(&gs)) printf("Nada para desfazer.\n"); }
-    else if(ch=='q') break;
+    game_tick(&gs);
+    screen_draw(&gs);
+    for(;;){
+      int ch = getch_now();
+      if (ch == -1) break;
+      ch = tolower(ch);
+      if (ch=='w' || ch=='a' || ch=='s' || ch=='d') player_move_next(&gs);
+      else if (ch=='h'){ if(!player_handle_top(&gs)) printf("Nada para resolver.\n"); }
+      else if (ch=='u'){ if(!player_undo(&gs)) printf("Nada para desfazer.\n"); }
+      else if (ch=='q'){ goto end; }
+    }
   }
+end:
   printf("\nFIM! Score: %d | Penalidades: %d/%d\n", gs.score, gs.penalties_soft, gs.penalties_hard);
-  game_shutdown(&gs); return 0;
+
+  Score cur; memset(&cur,0,sizeof(cur));
+  strncpy(cur.name,"player",sizeof(cur.name)-1);
+  cur.score = gs.score;
+  cur.penalties_soft = gs.penalties_soft;
+  cur.penalties_hard = gs.penalties_hard;
+  ranking_save_append(&cur);
+
+  Score arr[512];
+  int n = ranking_load(arr, 512);
+  if (n>0){
+    quicksort_scores(arr, 0, n-1);
+    printf("\nRanking:\n");
+    ranking_print_top(arr, n);
+  }
+
+  keyboard_shutdown();
+  game_shutdown(&gs);
+  return 0;
 }

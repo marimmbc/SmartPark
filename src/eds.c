@@ -2,17 +2,22 @@
 #include <string.h>
 #include "eds.h"
 
-/* -------- LISTA CIRCULAR -------- */
 static Sector* new_node(SectorType t){ Sector* n = malloc(sizeof(Sector)); n->type=t; n->next=NULL; return n; }
 Sector* map_build_3(void){ Sector *a=new_node(SECTOR_BALANCO), *b=new_node(SECTOR_SORVETE), *c=new_node(SECTOR_ESCORREGA); a->next=b; b->next=c; c->next=a; return a; }
 Sector* step_next(Sector* s){ return s ? s->next : NULL; }
 
-/* -------- FILA (prioridade) -------- */
 int event_priority(EventType t){
-  switch(t){ case EVT_BALANCO_MANUTENCAO: return 0; case EVT_SORVETE_REABASTECER: return 1;
-             case EVT_ESCORREGA_MOLHADO: return 2; case EVT_SORVETE_FILA: return 3;
-             case EVT_BALANCO_QUER_BRINCAR: return 4; case EVT_ESCORREGA_QUER: return 5; default: return 9; }
+  switch(t){
+    case EVT_BALANCO_MANUTENCAO: return 0;
+    case EVT_SORVETE_REABASTECER: return 1;
+    case EVT_ESCORREGA_MOLHADO: return 2;
+    case EVT_SORVETE_FILA: return 3;
+    case EVT_BALANCO_QUER_BRINCAR: return 4;
+    case EVT_ESCORREGA_QUER: return 5;
+    default: return 9;
+  }
 }
+
 void queue_init(EventQueue* q){ q->size=0; }
 bool queue_is_full(const EventQueue* q){ return q->size>=EVENT_QUEUE_CAP; }
 bool queue_is_empty(const EventQueue* q){ return q->size==0; }
@@ -25,19 +30,27 @@ bool queue_ordered_insert(EventQueue* q, Event e){
   q->buf[i]=e; q->size++; return true;
 }
 
-/* -------- PILHA (snapshots) -------- */
 Stack* stack_new(int cap){ Stack* s=malloc(sizeof(Stack)); s->top=-1; s->cap=cap; s->data=malloc(sizeof(void*)*cap); return s; }
 void   stack_free(Stack* s){ if(!s) return; for(int i=0;i<=s->top;i++) free(s->data[i]); free(s->data); free(s); }
 bool   stack_push_snap(Stack* s, const Snapshot* snap){ if(s->top+1>=s->cap) return false; Snapshot* c=malloc(sizeof(Snapshot)); *c=*snap; s->data[++s->top]=c; return true; }
 bool   stack_pop_snap(Stack* s, Snapshot* out){ if(s->top<0) return false; Snapshot* c=(Snapshot*)s->data[s->top--]; if(out) *out=*c; free(c); return true; }
 
-/* -------- snapshot helpers -------- */
 void save_snapshot(const GameState* gs, Snapshot* out){
-  out->score=gs->score; out->penalties_soft=gs->penalties_soft; out->penalties_hard=gs->penalties_hard;
-  out->queue=gs->queue; out->player_sector=gs->player_pos->type;
+  out->score=gs->score;
+  out->penalties_soft=gs->penalties_soft;
+  out->penalties_hard=gs->penalties_hard;
+  out->queue=gs->queue;
+  out->player_sector=gs->player_pos->type;
 }
+
 void restore_snapshot(GameState* gs, const Snapshot* snap){
-  gs->score=snap->score; gs->penalties_soft=snap->penalties_soft; gs->penalties_hard=snap->penalties_hard;
+  gs->score=snap->score;
+  gs->penalties_soft=snap->penalties_soft;
+  gs->penalties_hard=snap->penalties_hard;
   gs->queue=snap->queue;
-  Sector* p=gs->map_head; for(int i=0;i<SECTOR_COUNT;i++){ if(p->type==snap->player_sector){ gs->player_pos=p; break; } p=p->next; }
+  Sector* p=gs->map_head;
+  for(int i=0;i<SECTOR_COUNT;i++){
+    if(p->type==snap->player_sector){ gs->player_pos=p; break; }
+    p=p->next;
+  }
 }
