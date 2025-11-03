@@ -30,15 +30,14 @@ const char* event_name(EventType e){
 }
 
 static EventType pick_event_for(SectorType s){
-  int bit = (int)((now_ms()/1000) % 2);
-  if (s==SECTOR_BALANCO)   return bit?EVT_BALANCO_QUER_BRINCAR:EVT_BALANCO_MANUTENCAO;
-  if (s==SECTOR_SORVETE)   return bit?EVT_SORVETE_FILA:EVT_SORVETE_REABASTECER;
-  return bit?EVT_ESCORREGA_QUER:EVT_ESCORREGA_MOLHADO;
+  if (s==SECTOR_BALANCO)   return EVT_BALANCO_MANUTENCAO;
+  if (s==SECTOR_SORVETE)   return EVT_SORVETE_REABASTECER;
+  return EVT_ESCORREGA_MOLHADO;
 }
 
 static void enqueue_sector_event_if_possible(GameState* gs, SectorType s){
   Event e; e.type=pick_event_for(s); e.sector=s; e.enq_ms=gs->now_ms;
-  queue_ordered_insert(&gs->queue, e);
+  queue_enqueue(&gs->queue, e);
 }
 
 static int rnd_range(int a, int b){ return a + (rand() % (b - a + 1)); }
@@ -83,7 +82,7 @@ void game_init(GameState* gs){
   gs->penalties_hard=0;
   gs->start_ms=now_ms();
   gs->now_ms=gs->start_ms;
-  srand((unsigned)gs->start_ms);            
+  srand((unsigned)gs->start_ms);
   gs->map_head=map_build_3();
   gs->player_pos=gs->map_head;
   queue_init(&gs->queue);
