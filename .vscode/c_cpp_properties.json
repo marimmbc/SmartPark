@@ -3,15 +3,16 @@
     {
       "name": "macos-clang-arm64",
       "includePath": [
+        "${workspaceFolder}/include",
+        "/opt/homebrew/include",
+        "/opt/homebrew/include/tensorflow",
         "${workspaceFolder}/**"
       ],
       "compilerPath": "/usr/bin/clang",
-      "cStandard": "${default}",
-      "cppStandard": "${default}",
+      "cStandard": "c17",
+      "cppStandard": "c++17",
       "intelliSenseMode": "macos-clang-arm64",
-      "compilerArgs": [
-        ""
-      ]
+      "compilerArgs": []
     }
   ],
   "version": 4

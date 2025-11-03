@@ -41,12 +41,24 @@ static void enqueue_sector_event_if_possible(GameState* gs, SectorType s){
   queue_ordered_insert(&gs->queue, e);
 }
 
+static int rnd_range(int a, int b){ return a + (rand() % (b - a + 1)); }
+
 static void maybe_generate_events(GameState* gs){
-  static uint64_t last_ms=0;
-  if(!last_ms) last_ms=gs->now_ms;
-  if (gs->now_ms - last_ms >= NPC_ACTION_MS){
-    for(int i=0;i<SECTOR_COUNT;i++) enqueue_sector_event_if_possible(gs,(SectorType)i);
-    last_ms=gs->now_ms;
+  static int initialized = 0;
+  static uint64_t next_ms[SECTOR_COUNT];
+
+  if (!initialized){
+    for(int i=0;i<SECTOR_COUNT;i++){
+      next_ms[i] = gs->now_ms + (uint64_t)rnd_range(2000, 7000);
+    }
+    initialized = 1;
+  }
+
+  for(int i=0;i<SECTOR_COUNT;i++){
+    if (gs->now_ms >= next_ms[i]){
+      enqueue_sector_event_if_possible(gs, (SectorType)i);
+      next_ms[i] = gs->now_ms + (uint64_t)rnd_range(2000, 7000);
+    }
   }
 }
 
@@ -71,6 +83,7 @@ void game_init(GameState* gs){
   gs->penalties_hard=0;
   gs->start_ms=now_ms();
   gs->now_ms=gs->start_ms;
+  srand((unsigned)gs->start_ms);            
   gs->map_head=map_build_3();
   gs->player_pos=gs->map_head;
   queue_init(&gs->queue);
@@ -116,4 +129,9 @@ bool player_undo(GameState* gs){
   if(!stack_pop_snap(gs->undo,&s)) return false;
   restore_snapshot(gs,&s);
   return true;
+}
+
+void player_move_prev(GameState* gs){
+  Snapshot s; save_snapshot(gs,&s); stack_push_snap(gs->undo,&s);
+  gs->player_pos = step_prev(gs->player_pos, gs->map_head);
 }

@@ -54,3 +54,15 @@ void restore_snapshot(GameState* gs, const Snapshot* snap){
     p=p->next;
   }
 }
+
+static Sector* new_node(SectorType t){ Sector* n = malloc(sizeof(Sector)); n->type=t; n->next=NULL; return n; }
+Sector* map_build_3(void){ Sector *a=new_node(SECTOR_BALANCO), *b=new_node(SECTOR_SORVETE), *c=new_node(SECTOR_ESCORREGA); a->next=b; b->next=c; c->next=a; return a; }
+Sector* step_next(Sector* s){ return s ? s->next : NULL; }
+Sector* step_prev(Sector* s, Sector* head){
+  if (!s || !head) return NULL;
+  Sector* p = head;
+  for(;;){
+    if (p->next == s) return p;
+    p = p->next;
+  }
+}
