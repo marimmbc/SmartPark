@@ -25,9 +25,8 @@ int ia_enabled(void){
     return g_tf_ok;
 }
 
-float ia_predict_paciencia(float p, int preferido, float espera_s, float reforco_extra){
+float ia_predict_paciencia(float p, float espera_s, float reforco_extra){
     float delta = 0.0f;
-    if (preferido) delta += 0.10f; else delta -= 0.06f;
     delta += (-0.01f * espera_s);
     delta += reforco_extra;
     float r = p + delta;
