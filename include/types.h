@@ -33,10 +33,14 @@ typedef struct { Event buf[EVENT_QUEUE_CAP]; int size; } EventQueue;
 typedef struct { int top, cap; void** data; } Stack;
 
 typedef struct Npc {
-    Sector* current_sector;
-    uint64_t arrival_ms;
-    int in_queue;
-    int queue_slot;
+    Sector*   current_sector;
+    uint64_t  arrival_ms;
+    int       in_queue;
+    int       queue_slot;
+
+    float     patience;          
+    SectorType preferred;        
+    uint64_t  wait_start_ms;     
 } Npc;
 
 typedef struct {

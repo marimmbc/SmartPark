@@ -69,19 +69,45 @@ static void maybe_generate_events(GameState* gs){
   static uint64_t next_ms[SECTOR_COUNT];
 
   if (!initialized){
-    for(int i=0;i<SECTOR_COUNT;i++){
+    for (int i=0; i<SECTOR_COUNT; i++){
       next_ms[i] = gs->now_ms + (uint64_t)rnd_range(2000, 7000);
     }
     initialized = 1;
   }
 
-  for(int i=0;i<SECTOR_COUNT;i++){
+  float soma_paciencia = 0.0f;
+  int total_npcs = 0;
+  for (int k=0; k<gs->npc_count; k++){
+    soma_paciencia += gs->npcs[k].patience;
+    total_npcs++;
+  }
+
+  float media_paciencia = (total_npcs > 0) ? (soma_paciencia / (float)total_npcs) : 0.7f;
+  float fator_humor;
+
+  if      (media_paciencia < 0.30f) fator_humor = 0.50f;  
+  else if (media_paciencia < 0.50f) fator_humor = 0.80f;
+  else if (media_paciencia < 0.70f) fator_humor = 1.00f;
+  else if (media_paciencia < 0.85f) fator_humor = 1.15f;
+  else                              fator_humor = 1.30f;  
+
+  for (int i=0; i<SECTOR_COUNT; i++){
     if (gs->now_ms >= next_ms[i]){
       enqueue_sector_event_if_possible(gs, (SectorType)i);
-      next_ms[i] = gs->now_ms + (uint64_t)rnd_range(2000, 7000);
+
+      int base_min = 2000;
+      int base_max = 7000;
+      int intervalo = base_max - base_min;
+      int aleatorio = rnd_range(0, intervalo);
+
+      uint64_t delay = (uint64_t)((base_min + aleatorio) / fator_humor);
+      if (delay < 800) delay = 800;
+
+      next_ms[i] = gs->now_ms + delay;
     }
   }
 }
+
 
 static void check_delay_penalties(GameState* gs){
   Event top;
@@ -181,20 +207,38 @@ void npcs_init(GameState* gs, int count){
   if (count > NPC_MAX) count = NPC_MAX;
   gs->npc_count = count;
   for(int i=0;i<count;i++){
-    gs->npcs[i].current_sector = gs->map_head; 
+    gs->npcs[i].current_sector = gs->map_head;
     gs->npcs[i].arrival_ms = gs->now_ms;
     gs->npcs[i].in_queue = 0;
     gs->npcs[i].queue_slot = 0;
+    gs->npcs[i].patience = 0.70f;
+    gs->npcs[i].preferred = (SectorType)(i % SECTOR_COUNT);
+    gs->npcs[i].wait_start_ms = 0;
   }
 }
 
+
 static void npc_tick_one(GameState* gs, Npc* n){
   if (!n->current_sector) return;
+
+  int preferido = (n->current_sector->type == n->preferred) ? 1 : 0;
 
   if (sector_has_active_event(gs, n->current_sector->type)){
     if (!n->in_queue){
       n->in_queue = 1;
       n->queue_slot = count_waiting_at_sector(gs, n->current_sector->type);
+      n->wait_start_ms = gs->now_ms;
+    } else {
+      float espera_s = (float)((gs->now_ms - n->wait_start_ms) / 1000.0);
+      n->patience = ia_predict_paciencia(n->patience, preferido, espera_s, 0.0f);
+      if (n->patience < 0.25f){
+        n->in_queue = 0;
+        n->current_sector = step_next(n->current_sector);
+        n->arrival_ms = gs->now_ms;
+        n->patience += 0.10f;
+        if (n->patience > 1.0f) n->patience = 1.0f;
+        return;
+      }
     }
     return;
   }
@@ -202,14 +246,19 @@ static void npc_tick_one(GameState* gs, Npc* n){
   if (n->in_queue){
     n->in_queue = 0;
     n->arrival_ms = gs->now_ms;
+    n->patience = ia_predict_paciencia(n->patience, preferido, 0.0f, +0.05f);
+    if (n->patience > 1.0f) n->patience = 1.0f;
     return;
   }
 
   if (gs->now_ms - n->arrival_ms >= NPC_STOP_MS){
     n->current_sector = step_next(n->current_sector);
     n->arrival_ms = gs->now_ms;
+    n->patience = ia_predict_paciencia(n->patience, preferido, 0.0f, +0.02f);
+    if (n->patience > 1.0f) n->patience = 1.0f;
   }
 }
+
 
 void npcs_tick(GameState* gs){
   for(int i=0;i<gs->npc_count;i++){

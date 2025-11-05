@@ -1,6 +1,14 @@
 #ifndef IA_H
 #define IA_H
-float ia_init(const char* model_dir, const char* input_op, const char* output_op);
-void  ia_shutdown(void);
-float ia_predict_paciencia(float preferido, float espera_s, float pac_atual);
+#include <stdint.h>
+
+int  ia_init(void);
+void ia_shutdown(void);
+int  ia_enabled(void);
+
+float ia_predict_paciencia(float paciencia_atual,
+                           int preferido,
+                           float espera_s,
+                           float reforco_extra);
+
 #endif

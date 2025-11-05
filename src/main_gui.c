@@ -4,6 +4,7 @@
 #include "game.h"
 #include "gui.h"
 #include "ranking.h"
+#include "ia.h"
 
 typedef enum { STATE_MENU=0, STATE_NAME=1, STATE_GAME=2, STATE_RANKING=3, STATE_EXIT=4 } AppState;
 
@@ -176,6 +177,7 @@ int main(void){
             }
             if (IsKeyPressed(KEY_BACKSPACE) && strlen(playerName)>0) playerName[strlen(playerName)-1]='\0';
             if (IsKeyPressed(KEY_ENTER) && strlen(playerName)>0){
+                ia_init();
                 game_init(&gs);
                 state=STATE_GAME;
             }
@@ -198,6 +200,7 @@ int main(void){
                 cur.penalties_hard=gs.penalties_hard;
                 ranking_save_append(&cur);
                 game_shutdown(&gs);
+                ia_shutdown();
                 state=STATE_MENU;
                 EndDrawing();
                 continue;
@@ -213,6 +216,7 @@ int main(void){
                 cur.penalties_hard=gs.penalties_hard;
                 ranking_save_append(&cur);
                 game_shutdown(&gs);
+                ia_shutdown();
                 state=STATE_EXIT;
                 EndDrawing();
                 continue;
@@ -223,7 +227,10 @@ int main(void){
         }
         EndDrawing();
     }
-    if (state==STATE_GAME) game_shutdown(&gs);
+    if (state==STATE_GAME){
+        game_shutdown(&gs);
+        ia_shutdown();
+    }
     unload_menu_assets();
     CloseWindow();
     return 0;
