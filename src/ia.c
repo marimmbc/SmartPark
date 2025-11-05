@@ -1,14 +1,20 @@
 #include "ia.h"
-#ifdef __APPLE__
-#include <dlfcn.h>
-#endif
 #include <math.h>
 
 static int g_tf_ok = 0;
 
+#ifdef __APPLE__
+#include <dlfcn.h>
+#include <tensorflow/c/c_api.h>
+#endif
+
 int ia_init(void){
     g_tf_ok = 0;
-    return 1;
+#ifdef __APPLE__
+    void* handle = dlopen("/opt/homebrew/lib/libtensorflow.dylib", RTLD_LAZY);
+    if (handle) { g_tf_ok = 1; dlclose(handle); }
+#endif
+    return g_tf_ok;
 }
 
 void ia_shutdown(void){

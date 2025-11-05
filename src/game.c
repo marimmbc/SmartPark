@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include "game.h"
 #include "eds.h"
+#include "ia.h"
 
 static uint64_t now_ms(void){ struct timeval tv; gettimeofday(&tv,NULL); return (uint64_t)tv.tv_sec*1000ULL + tv.tv_usec/1000ULL; }
 static void sleep_ms(int ms){ usleep(ms*1000); }
@@ -229,8 +230,8 @@ static void npc_tick_one(GameState* gs, Npc* n){
       n->queue_slot = count_waiting_at_sector(gs, n->current_sector->type);
       n->wait_start_ms = gs->now_ms;
     } else {
-      float espera_s = (float)((gs->now_ms - n->wait_start_ms) / 1000.0);
-      n->patience = ia_predict_paciencia(n->patience, preferido, espera_s, 0.0f);
+      float delta_s = (float)(GAME_TICK_MS / 1000.0f);
+      n->patience = ia_predict_paciencia(n->patience, preferido, delta_s, 0.0f);
       if (n->patience < 0.25f){
         n->in_queue = 0;
         n->current_sector = step_next(n->current_sector);
