@@ -30,8 +30,14 @@ float ia_predict_paciencia(float p, int preferido, float espera_s, float reforco
     if (preferido) delta += 0.10f; else delta -= 0.06f;
     delta += (-0.01f * espera_s);
     delta += reforco_extra;
-    float r = p + delta;
-    if (r < 0.0f) r = 0.0f;
-    if (r > 1.0f) r = 1.0f;
-    return r;
+
+    float pred = p + delta;
+    if (pred < 0.0f) pred = 0.0f;
+    if (pred > 1.0f) pred = 1.0f;
+
+    float suavizado = (0.7f * p) + (0.3f * pred);
+    if (suavizado < 0.0f) suavizado = 0.0f;
+    if (suavizado > 1.0f) suavizado = 1.0f;
+
+    return suavizado;
 }
