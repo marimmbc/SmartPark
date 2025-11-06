@@ -10,13 +10,13 @@ static int g_tf_ok = 0;
 #include <dlfcn.h>
 #include <tensorflow/c/c_api.h>
 
-static void*       g_tf_handle = NULL;
-static TF_Graph*   g_graph = NULL;
+static void*      g_tf_handle = NULL;
+static TF_Graph*  g_graph = NULL;
 static TF_Session* g_session = NULL;
-static TF_Status*  g_status = NULL;
-static TF_Output   g_input_op;
-static TF_Output   g_output_op;
-static int         g_model_ready = 0;
+static TF_Status* g_status = NULL;
+static TF_Output  g_input_op;
+static TF_Output  g_output_op;
+static int        g_model_ready = 0;
 
 static const char* resolve_env_or_default(const char* key, const char* fallback){
     const char* value = getenv(key);
