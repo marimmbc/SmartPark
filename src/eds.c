@@ -32,10 +32,29 @@ bool queue_is_empty(const EventQueue* q){ return q->size==0; }
 bool queue_peek(const EventQueue* q, Event* out){ if(!q->size) return false; *out=q->buf[0]; return true; }
 bool queue_dequeue(EventQueue* q, Event* out){ if(!q->size) return false; if(out) *out=q->buf[0]; memmove(&q->buf[0], &q->buf[1], sizeof(Event)*(q->size-1)); q->size--; return true; }
 
-bool queue_enqueue(EventQueue* q, Event e){
+bool queue_ordered_insert(EventQueue* q, Event e){
   if (queue_is_full(q)) return false;
-  q->buf[q->size++] = e;
+
+  int prio = event_priority(e.type);
+  int insert_at = q->size;
+
+  while (insert_at > 0){
+    int prev_prio = event_priority(q->buf[insert_at - 1].type);
+    if (prev_prio <= prio) break;
+    insert_at--;
+  }
+
+  if (insert_at < q->size){
+    memmove(&q->buf[insert_at + 1], &q->buf[insert_at], sizeof(Event) * (q->size - insert_at));
+  }
+
+  q->buf[insert_at] = e;
+  q->size++;
   return true;
+}
+
+bool queue_enqueue(EventQueue* q, Event e){
+  return queue_ordered_insert(q, e);
 }
 
 Stack* stack_new(int cap){ Stack* s=malloc(sizeof(Stack)); s->top=-1; s->cap=cap; s->data=malloc(sizeof(void*)*cap); return s; }

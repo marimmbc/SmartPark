@@ -6,10 +6,10 @@
 #include "eds.h"
 #include "ia.h"
 
-static uint64_t now_ms(void){ 
-    struct timeval tv; 
-    gettimeofday(&tv,NULL); 
-    return (uint64_t)tv.tv_sec*1000ULL + tv.tv_usec/1000ULL; 
+static uint64_t now_ms(void){
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return (uint64_t)tv.tv_sec*1000ULL + tv.tv_usec/1000ULL;
 }
 
 static void sleep_ms(int ms){ usleep(ms*1000); }
@@ -49,13 +49,10 @@ static void enqueue_sector_event_if_possible(GameState* gs, SectorType s){
 }
 
 static void maybe_generate_events(GameState* gs){
-    static int initialized = 0;
-    static uint64_t next_ms[SECTOR_COUNT];
-
-    if (!initialized){
+    if (!gs->events_initialized){
         for (int i=0; i<SECTOR_COUNT; i++)
-            next_ms[i] = gs->now_ms + (uint64_t)rnd_range(2000, 7000);
-        initialized = 1;
+            gs->next_event_ms[i] = gs->now_ms + (uint64_t)rnd_range(2000, 7000);
+        gs->events_initialized = true;
     }
 
     float soma_paciencia = 0.0f;
@@ -74,7 +71,7 @@ static void maybe_generate_events(GameState* gs){
     else                              fator_humor = 1.30f;
 
     for (int i=0; i<SECTOR_COUNT; i++){
-        if (gs->now_ms >= next_ms[i]){
+        if (gs->now_ms >= gs->next_event_ms[i]){
             enqueue_sector_event_if_possible(gs, (SectorType)i);
             int base_min = 2000;
             int base_max = 7000;
@@ -82,7 +79,7 @@ static void maybe_generate_events(GameState* gs){
             int aleatorio = rnd_range(0, intervalo);
             uint64_t delay = (uint64_t)((base_min + aleatorio) / fator_humor);
             if (delay < 800) delay = 800;
-            next_ms[i] = gs->now_ms + delay;
+            gs->next_event_ms[i] = gs->now_ms + delay;
         }
     }
 }
@@ -116,7 +113,11 @@ void game_init(GameState* gs){
     gs->player_x=450.0f;
     gs->player_y=500.0f;
     gs->last_input_ms=gs->now_ms;
-    for (int i=0;i<SECTOR_COUNT;i++) gs->last_resolve_ms[i]=0;
+    for (int i=0;i<SECTOR_COUNT;i++){
+        gs->last_resolve_ms[i]=0;
+        gs->next_event_ms[i]=0;
+    }
+    gs->events_initialized = false;
     npcs_init(gs, 6);
 }
 
@@ -190,7 +191,7 @@ static void npc_tick_one(GameState* gs, Npc* n){
             if (interaction_recent) delta_s = 0.0f;
 
             float pred = ia_predict_paciencia(n->patience, preferido, delta_s, 0.0f);
-            n->patience = pred; 
+            n->patience = pred;
             if (n->patience < 0.25f){
                 n->in_queue = 0;
                 n->current_sector = step_next(n->current_sector);

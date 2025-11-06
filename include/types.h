@@ -57,9 +57,9 @@ typedef struct Npc {
     int       in_queue;
     int       queue_slot;
 
-    float     patience;          
-    SectorType preferred;        
-    uint64_t  wait_start_ms;    
+    float     patience;
+    SectorType preferred;
+    uint64_t  wait_start_ms;
 } Npc;
 
 typedef struct {
@@ -82,7 +82,9 @@ typedef struct {
     Npc npcs[NPC_MAX];
     int npc_count;
 
-    uint64_t last_resolve_ms[SECTOR_COUNT]; 
+    uint64_t last_resolve_ms[SECTOR_COUNT];
+    uint64_t next_event_ms[SECTOR_COUNT];
+    bool events_initialized;
 } GameState;
 
 typedef struct {

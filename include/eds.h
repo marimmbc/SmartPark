@@ -12,6 +12,7 @@ bool  queue_is_empty(const EventQueue* q);
 bool  queue_peek(const EventQueue* q, Event* out);
 bool  queue_dequeue(EventQueue* q, Event* out);
 bool  queue_enqueue(EventQueue* q, Event e);
+bool  queue_ordered_insert(EventQueue* q, Event e);
 
 int   event_priority(EventType t);
 
