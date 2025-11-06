@@ -37,8 +37,10 @@ typedef struct Npc {
     uint64_t  arrival_ms;
     int       in_queue;
     int       queue_slot;
-    float     patience;
-    uint64_t  wait_start_ms;
+
+    float     patience;          
+    SectorType preferred;        
+    uint64_t  wait_start_ms;     
 } Npc;
 
 typedef struct {
