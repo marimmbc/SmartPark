@@ -26,7 +26,6 @@ $(SRC_DIR)/main_gui.c
 OBJ := $(SRC:.c=.o)
 
 all: gui
-
 gui: $(BIN)
 
 $(BIN): $(OBJ) | $(BLD_DIR)

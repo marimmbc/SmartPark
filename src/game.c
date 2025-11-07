@@ -231,3 +231,10 @@ void game_tick(GameState* gs){
     npcs_tick(gs);
     sleep_ms(10);
 }
+
+bool player_undo(GameState* gs){
+    Snapshot s;
+    if(!stack_pop_snap(gs->undo,&s)) return false;
+    restore_snapshot(gs,&s);
+    return true;
+}

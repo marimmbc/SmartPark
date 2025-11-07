@@ -93,21 +93,39 @@ static int draw_menu_and_handle_input(void){
     return chosen;
 }
 
-static void draw_name_input(char* nameBuf,int maxLen){
+static void draw_name_input(char* nameBuf, int maxLen){
     draw_blurred_bg();
-    const char* msg="Digite seu nome:";
-    int mw=MeasureTextEx(pixFont,msg,32,1).x;
-    DrawTextEx(pixFont,msg,(Vector2){(float)(WIN_W/2 - mw/2), 200},32,1,RAYWHITE);
-    int boxW=420, boxH=60;
-    Rectangle box=(Rectangle){(float)(WIN_W/2 - boxW/2), 260, (float)boxW, (float)boxH};
+
+    const char* msg = "Digite seu nome:";
+    int mw = MeasureTextEx(pixFont, msg, 32, 1).x;
+    DrawTextEx(pixFont, msg, (Vector2){(float)(WIN_W/2 - mw/2), 200}, 32, 1, RAYWHITE);
+
+    int boxW = 420, boxH = 60;
+    Rectangle box = (Rectangle){(float)(WIN_W/2 - boxW/2), 260, (float)boxW, (float)boxH};
     DrawRectangleRec(box, WHITE);
     DrawRectangleLinesEx(box, 4.0f, (Color){0,255,128,255});
-    int fs=28;
-    int tw=MeasureTextEx(pixFont,nameBuf,fs,1).x;
-    DrawTextEx(pixFont,nameBuf,(Vector2){box.x + (box.width - tw)/2, box.y + (box.height - fs)/2},fs,1,BLACK);
-    const char* tip="pressione Enter para continuar";
-    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
-    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
+
+    int fs = 28;
+    int tw = MeasureTextEx(pixFont, nameBuf, fs, 1).x;
+
+    if ((int)strlen(nameBuf) > maxLen) {
+        char temp[maxLen + 1];
+        strncpy(temp, nameBuf, maxLen);
+        temp[maxLen] = '\0';
+        DrawTextEx(pixFont, temp, 
+            (Vector2){box.x + (box.width - tw)/2, box.y + (box.height - fs)/2}, 
+            fs, 1, BLACK);
+    } else {
+        DrawTextEx(pixFont, nameBuf, 
+            (Vector2){box.x + (box.width - tw)/2, box.y + (box.height - fs)/2}, 
+            fs, 1, BLACK);
+    }
+
+    const char* tip = "pressione Enter para continuar";
+    int ttw = MeasureTextEx(pixFont, tip, 16, 1).x;
+    DrawTextEx(pixFont, tip, 
+        (Vector2){(float)(WIN_W/2 - ttw/2), (float)(WIN_H - 60)}, 
+        16, 1, (Color){160,200,255,255});
 }
 
 static void draw_ranking_screen(void){
@@ -181,7 +199,7 @@ int main(void){
                 game_init(&gs);
                 state=STATE_GAME;
             }
-            draw_name_input(playerName,sizeof(playerName));
+            draw_name_input(playerName, 20);
             EndDrawing();
             continue;
         }
