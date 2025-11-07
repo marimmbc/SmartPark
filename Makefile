@@ -1,19 +1,18 @@
 CC       ?= cc
-CFLAGS   ?= -Wall -Wextra -O2
+CFLAGS   ?= -Wall -Wextra -O2 -std=c99
 CPPFLAGS ?=
-LDFLAGS := -Llib -ltensorflow -ltensorflow_framework -Wl,-rpath,./lib
-LDLIBS   ?=
 
-RAYLIB_PREFIX     ?= /opt/homebrew
+RAYLIB_PREFIX     ?= /opt/homebrew/opt/raylib
 TENSORFLOW_PREFIX ?= /opt/homebrew
 
 CPPFLAGS += -Iinclude -I$(RAYLIB_PREFIX)/include -I$(TENSORFLOW_PREFIX)/include
-LDFLAGS  += -L$(RAYLIB_PREFIX)/lib -L$(TENSORFLOW_PREFIX)/lib -Wl,-rpath,$(TENSORFLOW_PREFIX)/lib
-LDLIBS   += -lraylib -ltensorflow -ltensorflow_framework \
+LDFLAGS  := -L$(RAYLIB_PREFIX)/lib -L$(TENSORFLOW_PREFIX)/lib -Wl,-rpath,$(TENSORFLOW_PREFIX)/lib
+LDLIBS   := -lraylib -ltensorflow -ltensorflow_framework \
             -framework Cocoa -framework IOKit -framework CoreVideo -framework OpenGL
 
 SRC_DIR := src
 BLD_DIR := build
+BIN     := $(BLD_DIR)/jogo_gui
 
 SRC := \
 $(SRC_DIR)/eds.c \
@@ -25,7 +24,6 @@ $(SRC_DIR)/ia.c \
 $(SRC_DIR)/main_gui.c
 
 OBJ := $(SRC:.c=.o)
-BIN := $(BLD_DIR)/jogo_gui
 
 all: gui
 
