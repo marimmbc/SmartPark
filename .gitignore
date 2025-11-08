@@ -1,0 +1,47 @@
+
+# ========================
+# SmartPark - .gitignore
+# ========================
+
+# Build artifacts
+/build/
+/*.out
+/*.exe
+/*.dll
+/*.so
+/*.dylib
+/*.a
+/*.o
+*.obj
+*.log
+
+# VSCode / macOS
+.vscode/
+.DS_Store
+
+# Raylib / TensorFlow dynamic libs
+lib/*.dylib
+*.pb
+*.pbtxt
+
+# Python venv (usado para gerar modelo)
+venv/
+tf-smartpark/
+__pycache__/
+
+# Backup files / temporários
+*.swp
+*~
+*.bak
+*.tmp
+
+# Sistema / Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcodeproj/
+*.xcuserdata/
+
+# Arquivos de sistema ocultos
+ehthumbs.db
+Thumbs.db
+Icon?
