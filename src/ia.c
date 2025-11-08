@@ -46,16 +46,13 @@ static TF_Tensor* tensor_from_features(const float* features, int count){
 
 static int tf_predict(float p, int preferido, float espera_s, float reforco_extra, float* out_value){
     if (!g_model_ready || !g_session) return 0;
-
     float features[4];
     features[0] = p;
     features[1] = preferido ? 1.0f : 0.0f;
     features[2] = espera_s;
     features[3] = reforco_extra;
-
     TF_Tensor* input_tensor = tensor_from_features(features, 4);
     if (!input_tensor) return 0;
-
     TF_Tensor* output_tensor = NULL;
     TF_SessionRun(g_session,
                   NULL,
@@ -64,21 +61,17 @@ static int tf_predict(float p, int preferido, float espera_s, float reforco_extr
                   NULL, 0,
                   NULL,
                   g_status);
-
     TF_DeleteTensor(input_tensor);
-
     if (TF_GetCode(g_status) != TF_OK || !output_tensor){
         log_tf_error("TF_SessionRun");
         if (output_tensor) TF_DeleteTensor(output_tensor);
         return 0;
     }
-
     float* data = (float*)TF_TensorData(output_tensor);
     if (!data){
         TF_DeleteTensor(output_tensor);
         return 0;
     }
-
     *out_value = data[0];
     TF_DeleteTensor(output_tensor);
     return 1;
@@ -93,22 +86,18 @@ static float clamp01(float v){
 
 static float penalidade_por_espera(float espera_s){
     float penalidade = 0.0f;
-
     float faixa1 = espera_s;
     if (faixa1 > 10.0f) faixa1 = 10.0f;
     penalidade -= 0.003f * faixa1;
-
     if (espera_s > 10.0f){
         float faixa2 = espera_s - 10.0f;
         if (faixa2 > 15.0f) faixa2 = 15.0f;
         penalidade -= 0.0015f * faixa2;
     }
-
     if (espera_s > 25.0f){
         float faixa3 = espera_s - 25.0f;
         penalidade -= 0.00075f * faixa3;
     }
-
     return penalidade;
 }
 
@@ -118,7 +107,7 @@ int ia_init(void){
     const char* lib_path = resolve_env_or_default("SMARTPARK_TF_LIB", "/opt/homebrew/lib/libtensorflow.dylib");
     g_tf_handle = dlopen(lib_path, RTLD_NOW | RTLD_LOCAL);
     if (!g_tf_handle){
-        fprintf(stderr, "[IA][TensorFlow] Nao foi possivel carregar %s: %s\n", lib_path, dlerror());
+        fprintf(stderr, "[IA] TF desativado: falha ao carregar lib (%s): %s\n", lib_path, dlerror());
         return 0;
     }
 
@@ -134,6 +123,7 @@ int ia_init(void){
 
     if (TF_GetCode(g_status) != TF_OK){
         log_tf_error("TF_LoadSessionFromSavedModel");
+        fprintf(stderr, "[IA] TF fallback: falha ao carregar SavedModel em %s\n", model_dir);
         ia_shutdown();
         return 0;
     }
@@ -145,7 +135,8 @@ int ia_init(void){
     TF_Operation* output_op = TF_GraphOperationByName(g_graph, output_name);
 
     if (!input_op || !output_op){
-        fprintf(stderr, "[IA][TensorFlow] Operacoes nao encontradas (input: %s, output: %s)\n", input_name, output_name);
+        fprintf(stderr, "[IA] TF fallback: operacoes nao encontradas (input=%s, output=%s) em %s\n",
+                input_name, output_name, model_dir);
         ia_shutdown();
         return 0;
     }
@@ -157,9 +148,13 @@ int ia_init(void){
 
     g_model_ready = 1;
     g_tf_ok = 1;
+
+    fprintf(stderr, "[IA] TF ativo: modelo=%s | input=%s | output=%s\n",
+            model_dir, input_name, output_name);
 #endif
     return g_tf_ok;
 }
+
 
 void ia_shutdown(void){
 #ifdef __APPLE__
@@ -170,22 +165,18 @@ void ia_shutdown(void){
         if (TF_GetCode(g_status) != TF_OK) log_tf_error("TF_DeleteSession");
     }
     g_session = NULL;
-
     if (g_graph){
         TF_DeleteGraph(g_graph);
         g_graph = NULL;
     }
-
     if (g_status){
         TF_DeleteStatus(g_status);
         g_status = NULL;
     }
-
     if (g_tf_handle){
         dlclose(g_tf_handle);
         g_tf_handle = NULL;
     }
-
     g_model_ready = 0;
 #endif
     g_tf_ok = 0;
@@ -199,11 +190,8 @@ float ia_predict_paciencia(float p, int preferido, float espera_s, float reforco
     float delta = penalidade_por_espera(espera_s);
     if (preferido) delta += 0.10f;
     else delta -= 0.06f;
-
     delta += reforco_extra;
-
     float pred = clamp01(p + delta);
-
 #ifdef __APPLE__
     float tf_value = 0.0f;
     if (tf_predict(p, preferido, espera_s, reforco_extra, &tf_value)){
@@ -212,7 +200,6 @@ float ia_predict_paciencia(float p, int preferido, float espera_s, float reforco
         }
     }
 #endif
-
     float suavizado = clamp01((0.7f * p) + (0.3f * pred));
     return suavizado;
 }
