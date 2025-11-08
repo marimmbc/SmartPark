@@ -6,7 +6,7 @@
 #include "ranking.h"
 #include "ia.h"
 
-typedef enum { STATE_MENU=0, STATE_NAME=1, STATE_GAME=2, STATE_RANKING=3, STATE_EXIT=4 } AppState;
+typedef enum { STATE_MENU=0, STATE_NAME=1, STATE_GAME=2, STATE_RANKING=3, STATE_POSTGAME=4, STATE_EXIT=5 } AppState;
 
 static const int WIN_W=900, WIN_H=600;
 static const char* options[]={"iniciar o jogo","ver o ranking do jogo","sair do jogo"};
@@ -16,6 +16,11 @@ static int optionIndex=0;
 static Texture2D bgTex;
 static RenderTexture2D rtLow;
 static Font pixFont;
+
+static int finalPos=0;
+static int finalScore=0;
+static AppState postNext=STATE_MENU;
+static char finalName[16]="";
 
 static void init_menu_assets(void){
     bgTex = LoadTexture("assets/bg.png");
@@ -119,6 +124,39 @@ static void draw_ranking_screen(void){
     DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
 }
 
+static int compute_position_by_score_only(const Score* arr, int n, int myScore){
+    int pos=1;
+    for(int i=0;i<n;i++){
+        if (arr[i].score > myScore) pos++;
+    }
+    return pos;
+}
+
+static void draw_postgame_screen(int pos, int score){
+    draw_blurred_bg();
+    int btnW=420, btnH=64;
+    Rectangle r=(Rectangle){(float)((WIN_W-btnW)/2), (float)((WIN_H-btnH)/2), (float)btnW, (float)btnH};
+    Color borderCol=(Color){0,220,110,255};
+    Color fillLight=(Color){110,240,170,255};
+    Color fillDark=(Color){80,200,140,255};
+    float mid=r.height*0.55f;
+    DrawRectangle((int)r.x,(int)r.y,(int)r.width,(int)mid,fillLight);
+    DrawRectangle((int)r.x,(int)(r.y+mid),(int)r.width,(int)(r.height-mid),fillDark);
+    DrawRectangleLinesEx(r,4.0f,borderCol);
+    Rectangle inner=(Rectangle){r.x+6,r.y+6,r.width-12,r.height-12};
+    DrawRectangleLinesEx(inner,2.0f,borderCol);
+    char text[64];
+    snprintf(text,sizeof(text),"%d - %d",pos,score);
+    int fs=32;
+    int tw=MeasureTextEx(pixFont,text,(float)fs,1).x;
+    int tx=(int)(r.x+(r.width-tw)/2);
+    int ty=(int)(r.y+(r.height-fs)/2);
+    DrawTextEx(pixFont,text,(Vector2){(float)tx,(float)ty},(float)fs,1,BLACK);
+    const char* tip="Enter/ESC volta ao menu";
+    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
+    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
+}
+
 int main(void){
     InitWindow(WIN_W, WIN_H, "SmartPark");
     SetTargetFPS(60);
@@ -164,36 +202,45 @@ int main(void){
             continue;
         }
         if (state==STATE_GAME){
-            if ((gs.now_ms - gs.start_ms) >= (uint64_t)GAME_TOTAL_SECONDS*1000ULL){
+            int time_up = ((gs.now_ms - gs.start_ms) >= (uint64_t)GAME_TOTAL_SECONDS*1000ULL);
+            int user_quit = IsKeyPressed(KEY_Q);
+            if (time_up || user_quit){
                 Score cur; memset(&cur,0,sizeof(cur));
                 strncpy(cur.name,playerName,sizeof(cur.name)-1);
                 cur.score=gs.score;
                 cur.penalties_soft=gs.penalties_soft;
                 cur.penalties_hard=gs.penalties_hard;
-                ranking_save_append(&cur);
+                Score arr[512];
+                int n=ranking_load(arr,512);
+                finalPos = compute_position_by_score_only(arr,n,cur.score);
+                finalScore = cur.score;
+                strncpy(finalName, cur.name, sizeof(finalName)-1);
+                finalName[sizeof(finalName)-1]='\0';
+                postNext = time_up ? STATE_MENU : STATE_EXIT;
                 game_shutdown(&gs);
                 ia_shutdown();
-                state=STATE_MENU;
+                state=STATE_POSTGAME;
                 EndDrawing();
                 continue;
             }
             game_tick(&gs);
             if (IsKeyPressed(KEY_H)) player_handle_top(&gs);
             if (IsKeyPressed(KEY_U)) player_undo(&gs);
-            if (IsKeyPressed(KEY_Q)) {
-                Score cur; memset(&cur,0,sizeof(cur));
-                strncpy(cur.name,playerName,sizeof(cur.name)-1);
-                cur.score=gs.score;
-                cur.penalties_soft=gs.penalties_soft;
-                cur.penalties_hard=gs.penalties_hard;
-                ranking_save_append(&cur);
-                game_shutdown(&gs);
-                ia_shutdown();
-                state=STATE_EXIT;
-                EndDrawing();
-                continue;
-            }
             gui_draw(&gs, WIN_W, WIN_H);
+            EndDrawing();
+            continue;
+        }
+        if (state==STATE_POSTGAME){
+            draw_postgame_screen(finalPos, finalScore);
+            if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
+                Score toSave; memset(&toSave,0,sizeof(toSave));
+                strncpy(toSave.name,finalName,sizeof(toSave.name)-1);
+                toSave.score=finalScore;
+                toSave.penalties_soft=0;
+                toSave.penalties_hard=0;
+                ranking_save_append(&toSave);
+                state=STATE_MENU;
+            }
             EndDrawing();
             continue;
         }
