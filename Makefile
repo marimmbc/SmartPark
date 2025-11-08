@@ -3,12 +3,11 @@ CFLAGS   ?= -Wall -Wextra -O2 -std=c99
 CPPFLAGS ?=
 
 RAYLIB_PREFIX     ?= /opt/homebrew/opt/raylib
-TENSORFLOW_PREFIX ?= /opt/homebrew
+TENSORFLOW_PREFIX ?= /opt/homebrew/opt/libtensorflow
 
 CPPFLAGS += -Iinclude -I$(RAYLIB_PREFIX)/include -I$(TENSORFLOW_PREFIX)/include
-LDFLAGS  := -L$(RAYLIB_PREFIX)/lib -L$(TENSORFLOW_PREFIX)/lib -Wl,-rpath,$(TENSORFLOW_PREFIX)/lib
-LDLIBS   := -lraylib -ltensorflow -ltensorflow_framework \
-            -framework Cocoa -framework IOKit -framework CoreVideo -framework OpenGL
+LDFLAGS  := -L$(RAYLIB_PREFIX)/lib -L$(TENSORFLOW_PREFIX)/lib -Wl,-rpath,$(RAYLIB_PREFIX)/lib -Wl,-rpath,$(TENSORFLOW_PREFIX)/lib
+LDLIBS   := -lraylib -ltensorflow -ltensorflow_framework -framework Cocoa -framework IOKit -framework CoreVideo -framework OpenGL
 
 SRC_DIR := src
 BLD_DIR := build
