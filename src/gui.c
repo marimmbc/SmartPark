@@ -5,6 +5,12 @@
 #include "sprites.h"
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
+
+static int loaded = 0;
+static Sprites spr;
+static int sprites_ready = 0;
+static FaceDir player_dir = FACE_FRONT;
 
 static Vector2 sector_pos(int idx, int w, int h){
     float cx=w*0.5f, cy=h*0.5f, r=(w<h?w:h)*0.28f;
@@ -30,21 +36,31 @@ static int player_sector_index(const GameState* gs){
     return 0;
 }
 
-void gui_draw(const GameState* gs, int win_w, int win_h){
-    static int initialized = 0;
-    static Sprites spr;
-    static FaceDir player_dir = FACE_FRONT;
+void gui_load(void){
+    if (loaded) return;
+    if (!sprites_load(&spr, "assets")) {
+        sprites_ready = 0;
+    } else {
+        sprites_ready = 1;
+    }
+    loaded = 1;
+}
 
-    if (!initialized){
-        if (!IsWindowReady()) return;
-        if (!sprites_load(&spr, "assets")) {
-            BeginDrawing();
-            ClearBackground((Color){18,18,24,255});
-            DrawText("Failed to load sprites from ./assets", 30, 30, 20, RED);
-            EndDrawing();
-            return;
-        }
-        initialized = 1;
+void gui_unload(void){
+    if (!loaded) return;
+    if (sprites_ready) {
+        sprites_unload(&spr);
+        sprites_ready = 0;
+    }
+    loaded = 0;
+}
+
+void gui_draw(GameState* gs, int win_w, int win_h){
+    if (!loaded) gui_load();
+
+    if (!sprites_ready){
+        DrawText("Falha ao carregar sprites de ./assets", 30, 30, 20, RED);
+        return;
     }
 
     bool held = false;
@@ -53,8 +69,6 @@ void gui_draw(const GameState* gs, int win_w, int win_h){
     if (IsKeyDown(KEY_A)) { player_dir = FACE_LEFT;  held = true; }
     if (IsKeyDown(KEY_D)) { player_dir = FACE_RIGHT; held = true; }
     if (!held) player_dir = FACE_FRONT;
-
-    BeginDrawing();
 
     if (spr.background.id){
         DrawTexturePro(
@@ -92,6 +106,7 @@ void gui_draw(const GameState* gs, int win_w, int win_h){
         int nidx = cur ? sector_index_from_ptr(gs, cur) : 0;
         Vector2 np = sector_pos(nidx, win_w, win_h);
         float offsetY = n->in_queue ? (18.0f + n->queue_slot*10.0f) : 0.0f;
+
         FaceDir npc_dir = FACE_FRONT;
         Texture2D ntex = sprites_pick(&spr.npc, npc_dir, 0);
         if (ntex.id){
@@ -145,11 +160,4 @@ void gui_draw(const GameState* gs, int win_w, int win_h){
     }
     y+=8;
     DrawText("[W/A] setor anterior  [S/D] setor seguinte  [H] resolver  [U] desfazer  [Q] sair", x,y,16,(Color){160,200,255,255});
-
-    EndDrawing();
-
-    if (WindowShouldClose()){
-        sprites_unload(&spr);
-        initialized = 0;
-    }
 }

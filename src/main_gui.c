@@ -21,6 +21,7 @@ static int finalPos=0;
 static int finalScore=0;
 static AppState postNext=STATE_MENU;
 static char finalName[16]="";
+static int gameAssetsLoaded=0;
 
 static void init_menu_assets(void){
     bgTex = LoadTexture("assets/bg.png");
@@ -65,6 +66,44 @@ static void draw_pixel_button(Rectangle r,const char* text,bool focused){
     int tx=(int)(r.x+(r.width-tw)/2);
     int ty=(int)(r.y+(r.height-fs)/2);
     DrawTextEx(pixFont,text,(Vector2){(float)tx,(float)ty},(float)fs,1,textCol);
+}
+
+static int draw_menu_and_handle_input(void){
+    int btnW=420, btnH=64, gap=24;
+    int totalH=optionsCount*btnH+(optionsCount-1)*gap;
+    int startX=(WIN_W-btnW)/2;
+    int startY=(WIN_H-totalH)/2 + 30;
+
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) optionIndex=(optionIndex-1+optionsCount)%optionsCount;
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) optionIndex=(optionIndex+1)%optionsCount;
+
+    Vector2 mp=GetMousePosition();
+    int hover=-1;
+    for(int i=0;i<optionsCount;i++){
+        Rectangle r=(Rectangle){(float)startX,(float)(startY+i*(btnH+gap)),(float)btnW,(float)btnH};
+        if (CheckCollisionPointRec(mp,r)) hover=i;
+    }
+    if (hover!=-1) optionIndex=hover;
+
+    int chosen=-1;
+    if (IsKeyPressed(KEY_ENTER)) chosen=optionIndex;
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hover!=-1) chosen=hover;
+
+    draw_blurred_bg();
+    const char* title="SmartPark";
+    int tw=MeasureTextEx(pixFont,title,48,1).x;
+    DrawTextEx(pixFont,title,(Vector2){(float)(WIN_W/2 - tw/2), 100},48,1,RAYWHITE);
+
+    for(int i=0;i<optionsCount;i++){
+        Rectangle r=(Rectangle){(float)startX,(float)(startY+i*(btnH+gap)),(float)btnW,(float)btnH};
+        draw_pixel_button(r,options[i], i==optionIndex);
+    }
+
+    const char* tip="use W/S ou setas para navegar, Enter ou clique para selecionar";
+    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
+    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
+
+    return chosen;
 }
 
 static void draw_name_input(char* nameBuf){
@@ -189,6 +228,7 @@ int main(void){
             if (IsKeyPressed(KEY_ENTER) && strlen(playerName)>0){
                 ia_init();
                 game_init(&gs);
+                if (!gameAssetsLoaded){ gui_load_assets(); gameAssetsLoaded=1; }
                 state=STATE_GAME;
             }
             draw_name_input(playerName);
@@ -219,6 +259,7 @@ int main(void){
                 postNext = time_up ? STATE_MENU : STATE_EXIT;
                 game_shutdown(&gs);
                 ia_shutdown();
+                if (gameAssetsLoaded){ gui_unload_assets(); gameAssetsLoaded=0; }
                 state=STATE_POSTGAME;
                 EndDrawing();
                 continue;
@@ -249,6 +290,7 @@ int main(void){
     if (state==STATE_GAME){
         game_shutdown(&gs);
         ia_shutdown();
+        if (gameAssetsLoaded){ gui_unload_assets(); gameAssetsLoaded=0; }
     }
     unload_menu_assets();
     CloseWindow();
