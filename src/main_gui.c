@@ -62,70 +62,24 @@ static void draw_pixel_button(Rectangle r,const char* text,bool focused){
     DrawTextEx(pixFont,text,(Vector2){(float)tx,(float)ty},(float)fs,1,textCol);
 }
 
-static int draw_menu_and_handle_input(void){
-    int btnW=420, btnH=64, gap=24;
-    int totalH=optionsCount*btnH+(optionsCount-1)*gap;
-    int startX=(WIN_W-btnW)/2;
-    int startY=(WIN_H-totalH)/2 + 30;
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) optionIndex=(optionIndex-1+optionsCount)%optionsCount;
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) optionIndex=(optionIndex+1)%optionsCount;
-    Vector2 mp=GetMousePosition();
-    int hover=-1;
-    for(int i=0;i<optionsCount;i++){
-        Rectangle r=(Rectangle){(float)startX,(float)(startY+i*(btnH+gap)),(float)btnW,(float)btnH};
-        if (CheckCollisionPointRec(mp,r)) hover=i;
-    }
-    if (hover!=-1) optionIndex=hover;
-    int chosen=-1;
-    if (IsKeyPressed(KEY_ENTER)) chosen=optionIndex;
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hover!=-1) chosen=hover;
+static void draw_name_input(char* nameBuf){
     draw_blurred_bg();
-    const char* title="SmartPark";
-    int tw=MeasureTextEx(pixFont,title,48,1).x;
-    DrawTextEx(pixFont,title,(Vector2){(float)(WIN_W/2 - tw/2), 100},48,1,RAYWHITE);
-    for(int i=0;i<optionsCount;i++){
-        Rectangle r=(Rectangle){(float)startX,(float)(startY+i*(btnH+gap)),(float)btnW,(float)btnH};
-        draw_pixel_button(r,options[i], i==optionIndex);
-    }
-    const char* tip="use W/S ou setas para navegar, Enter ou clique para selecionar";
-    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
-    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
-    return chosen;
-}
-
-static void draw_name_input(char* nameBuf, int maxLen){
-    draw_blurred_bg();
-
     const char* msg = "Digite seu nome:";
     int mw = MeasureTextEx(pixFont, msg, 32, 1).x;
     DrawTextEx(pixFont, msg, (Vector2){(float)(WIN_W/2 - mw/2), 200}, 32, 1, RAYWHITE);
-
     int boxW = 420, boxH = 60;
     Rectangle box = (Rectangle){(float)(WIN_W/2 - boxW/2), 260, (float)boxW, (float)boxH};
     DrawRectangleRec(box, WHITE);
     DrawRectangleLinesEx(box, 4.0f, (Color){0,255,128,255});
-
+    char temp[16];
+    strncpy(temp, nameBuf, 15);
+    temp[15] = '\0';
     int fs = 28;
-    int tw = MeasureTextEx(pixFont, nameBuf, fs, 1).x;
-
-    if ((int)strlen(nameBuf) > maxLen) {
-        char temp[maxLen + 1];
-        strncpy(temp, nameBuf, maxLen);
-        temp[maxLen] = '\0';
-        DrawTextEx(pixFont, temp, 
-            (Vector2){box.x + (box.width - tw)/2, box.y + (box.height - fs)/2}, 
-            fs, 1, BLACK);
-    } else {
-        DrawTextEx(pixFont, nameBuf, 
-            (Vector2){box.x + (box.width - tw)/2, box.y + (box.height - fs)/2}, 
-            fs, 1, BLACK);
-    }
-
+    int tw = MeasureTextEx(pixFont, temp, fs, 1).x;
+    DrawTextEx(pixFont, temp, (Vector2){box.x + (box.width - tw)/2, box.y + (box.height - fs)/2}, fs, 1, BLACK);
     const char* tip = "pressione Enter para continuar";
     int ttw = MeasureTextEx(pixFont, tip, 16, 1).x;
-    DrawTextEx(pixFont, tip, 
-        (Vector2){(float)(WIN_W/2 - ttw/2), (float)(WIN_H - 60)}, 
-        16, 1, (Color){160,200,255,255});
+    DrawTextEx(pixFont, tip, (Vector2){(float)(WIN_W/2 - ttw/2), (float)(WIN_H - 60)}, 16, 1, (Color){160,200,255,255});
 }
 
 static void draw_ranking_screen(void){
@@ -171,7 +125,7 @@ int main(void){
     init_menu_assets();
     AppState state=STATE_MENU;
     GameState gs; memset(&gs,0,sizeof(gs));
-    char playerName[32]="";
+    char playerName[16]="";
     while(state!=STATE_EXIT && !WindowShouldClose()){
         BeginDrawing();
         ClearBackground(BLACK);
@@ -186,7 +140,7 @@ int main(void){
         if (state==STATE_NAME){
             int key=GetCharPressed();
             while(key>0){
-                if ((key>=32) && (key<=125) && (int)strlen(playerName)<(int)sizeof(playerName)-1){
+                if ((key>=32) && (key<=125) && (int)strlen(playerName)<15){
                     int len=(int)strlen(playerName);
                     playerName[len]=(char)key;
                     playerName[len+1]='\0';
@@ -199,7 +153,7 @@ int main(void){
                 game_init(&gs);
                 state=STATE_GAME;
             }
-            draw_name_input(playerName, 20);
+            draw_name_input(playerName);
             EndDrawing();
             continue;
         }
