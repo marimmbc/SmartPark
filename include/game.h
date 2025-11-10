@@ -2,6 +2,8 @@
 #define GAME_H
 #include "types.h"
 
+#define GAME_TOTAL_SECONDS 90 
+
 void game_init(GameState* gs);
 void game_shutdown(GameState* gs);
 void game_tick(GameState* gs);

@@ -45,7 +45,7 @@ static EventType pick_event_for(SectorType s){
 
 static void enqueue_sector_event_if_possible(GameState* gs, SectorType s){
     Event e; e.type=pick_event_for(s); e.sector=s; e.enq_ms=gs->now_ms;
-    if (gs->queue.size < EVENT_QUEUE_CAP) queue_enqueue(&gs->queue, e); // agora sempre no fim da fila
+    if (gs->queue.size < EVENT_QUEUE_CAP) queue_enqueue(&gs->queue, e); 
 }
 
 static void maybe_generate_events(GameState* gs){
