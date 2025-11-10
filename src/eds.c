@@ -29,18 +29,6 @@ Sector* step_prev(Sector* s, Sector* head){
   return NULL;
 }
 
-int event_priority(EventType t){
-  switch(t){
-    case EVT_BALANCO_MANUTENCAO:   return 0;
-    case EVT_SORVETE_REABASTECER:  return 1;
-    case EVT_ESCORREGA_MOLHADO:    return 2;
-    case EVT_SORVETE_FILA:         return 3;
-    case EVT_BALANCO_QUER_BRINCAR: return 4;
-    case EVT_ESCORREGA_QUER:       return 5;
-    default:                       return 9;
-  }
-}
-
 void queue_init(EventQueue* q){ q->size=0; }
 bool queue_is_full(const EventQueue* q){ return q->size>=EVENT_QUEUE_CAP; }
 bool queue_is_empty(const EventQueue* q){ return q->size==0; }
@@ -61,26 +49,11 @@ bool queue_dequeue(EventQueue* q, Event* out){
   return true;
 }
 
-bool queue_ordered_insert(EventQueue* q, Event e){
+bool queue_enqueue(EventQueue* q, Event e){
   if (queue_is_full(q)) return false;
-  int prio = event_priority(e.type);
-  int insert_at = q->size;
-  while (insert_at > 0){
-    int prev_prio = event_priority(q->buf[insert_at - 1].type);
-    if (prev_prio <= prio) break;
-    insert_at--;
-  }
-  if (insert_at < q->size){
-    memmove(&q->buf[insert_at + 1], &q->buf[insert_at],
-            sizeof(Event) * (q->size - insert_at));
-  }
-  q->buf[insert_at] = e;
+  q->buf[q->size] = e;
   q->size++;
   return true;
-}
-
-bool queue_enqueue(EventQueue* q, Event e){
-  return queue_ordered_insert(q, e);
 }
 
 Stack* stack_new(int cap){
