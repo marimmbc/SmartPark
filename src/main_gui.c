@@ -5,8 +5,9 @@
 #include "gui.h"
 #include "ranking.h"
 #include "ia.h"
+#include "eds.h"
 
-typedef enum { STATE_MENU=0, STATE_NAME=1, STATE_GAME=2, STATE_RANKING=3, STATE_POSTGAME=4, STATE_EXIT=5 } AppState;
+typedef enum { STATE_MENU=0, STATE_NAME=1, STATE_GAME=2, STATE_RANKING=3, STATE_EXIT=4 } AppState;
 
 static const int WIN_W=900, WIN_H=600;
 static const char* options[]={"iniciar o jogo","ver o ranking do jogo","sair do jogo"};
@@ -16,12 +17,6 @@ static int optionIndex=0;
 static Texture2D bgTex;
 static RenderTexture2D rtLow;
 static Font pixFont;
-
-static int finalPos=0;
-static int finalScore=0;
-static AppState postNext=STATE_MENU;
-static char finalName[16]="";
-static int gameAssetsLoaded=0;
 
 static void init_menu_assets(void){
     bgTex = LoadTexture("assets/bg.png");
@@ -45,7 +40,8 @@ static void draw_blurred_bg(void){
     }
     EndTextureMode();
     SetTextureFilter(rtLow.texture, TEXTURE_FILTER_BILINEAR);
-    DrawTexturePro(rtLow.texture,(Rectangle){0,0,(float)rtLow.texture.width,(float)-rtLow.texture.height},(Rectangle){0,0,(float)WIN_W,(float)WIN_H},(Vector2){0,0},0,WHITE);
+    DrawTexturePro(rtLow.texture,(Rectangle){0,0,(float)rtLow.texture.width,(float)-rtLow.texture.height},
+                   (Rectangle){0,0,(float)WIN_W,(float)WIN_H},(Vector2){0,0},0,WHITE);
     DrawRectangle(0,0,WIN_W,WIN_H,(Color){0,0,0,80});
 }
 
@@ -99,10 +95,6 @@ static int draw_menu_and_handle_input(void){
         draw_pixel_button(r,options[i], i==optionIndex);
     }
 
-    const char* tip="use W/S ou setas para navegar, Enter ou clique para selecionar";
-    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
-    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
-
     return chosen;
 }
 
@@ -126,11 +118,35 @@ static void draw_name_input(char* nameBuf){
     DrawTextEx(pixFont, tip, (Vector2){(float)(WIN_W/2 - ttw/2), (float)(WIN_H - 60)}, 16, 1, (Color){160,200,255,255});
 }
 
-static void draw_ranking_screen(void){
+static int draw_back_button(void){
+    int x=20, y=18, w=130, h=42;
+    Rectangle r=(Rectangle){(float)x,(float)y,(float)w,(float)h};
+    Color border=(Color){0,220,110,255};
+    Color fillA=(Color){110,240,170,255};
+    Color fillB=(Color){80,200,140,255};
+    float mid=h*0.55f;
+    DrawRectangle(x,y,w,(int)mid,fillA);
+    DrawRectangle(x,(int)(y+mid),w,(int)(h-mid),fillB);
+    DrawRectangleLinesEx(r,3.0f,border);
+    int fs=22;
+    const char* label="voltar";
+    int tx=x+36;
+    int ty=y+(h-fs)/2;
+    DrawTextEx(pixFont,"←",(Vector2){(float)(x+8),(float)ty},(float)fs,1,(Color){0,50,35,255});
+    DrawTextEx(pixFont,label,(Vector2){(float)tx,(float)ty},(float)fs,1,(Color){0,50,35,255});
+    Vector2 mp=GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mp,r)) return 1;
+    return 0;
+}
+
+static int draw_ranking_screen(void){
     draw_blurred_bg();
+    if (draw_back_button()) return 1;
+
     const char* title="Ranking";
     int tw=MeasureTextEx(pixFont,title,44,1).x;
     DrawTextEx(pixFont,title,(Vector2){(float)(WIN_W/2 - tw/2), 60},44,1,RAYWHITE);
+
     Score arr[512];
     int n=ranking_load(arr,512);
     if (n>0){
@@ -158,54 +174,23 @@ static void draw_ranking_screen(void){
         int mw=MeasureTextEx(pixFont,msg,22,1).x;
         DrawTextEx(pixFont,msg,(Vector2){(float)(WIN_W/2 - mw/2),160},22,1,(Color){220,220,240,255});
     }
-    const char* tip="ESC volta ao menu";
-    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
-    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
-}
-
-static int compute_position_by_score_only(const Score* arr, int n, int myScore){
-    int pos=1;
-    for(int i=0;i<n;i++){
-        if (arr[i].score > myScore) pos++;
-    }
-    return pos;
-}
-
-static void draw_postgame_screen(int pos, int score){
-    draw_blurred_bg();
-    int btnW=420, btnH=64;
-    Rectangle r=(Rectangle){(float)((WIN_W-btnW)/2), (float)((WIN_H-btnH)/2), (float)btnW, (float)btnH};
-    Color borderCol=(Color){0,220,110,255};
-    Color fillLight=(Color){110,240,170,255};
-    Color fillDark=(Color){80,200,140,255};
-    float mid=r.height*0.55f;
-    DrawRectangle((int)r.x,(int)r.y,(int)r.width,(int)mid,fillLight);
-    DrawRectangle((int)r.x,(int)(r.y+mid),(int)r.width,(int)(r.height-mid),fillDark);
-    DrawRectangleLinesEx(r,4.0f,borderCol);
-    Rectangle inner=(Rectangle){r.x+6,r.y+6,r.width-12,r.height-12};
-    DrawRectangleLinesEx(inner,2.0f,borderCol);
-    char text[64];
-    snprintf(text,sizeof(text),"%d - %d",pos,score);
-    int fs=32;
-    int tw=MeasureTextEx(pixFont,text,(float)fs,1).x;
-    int tx=(int)(r.x+(r.width-tw)/2);
-    int ty=(int)(r.y+(r.height-fs)/2);
-    DrawTextEx(pixFont,text,(Vector2){(float)tx,(float)ty},(float)fs,1,BLACK);
-    const char* tip="Enter/ESC volta ao menu";
-    int ttw=MeasureTextEx(pixFont,tip,16,1).x;
-    DrawTextEx(pixFont,tip,(Vector2){(float)(WIN_W/2-ttw/2),(float)(WIN_H-60)},16,1,(Color){160,200,255,255});
+    return 0;
 }
 
 int main(void){
     InitWindow(WIN_W, WIN_H, "SmartPark");
+    SetExitKey(0);
     SetTargetFPS(60);
     init_menu_assets();
+
     AppState state=STATE_MENU;
     GameState gs; memset(&gs,0,sizeof(gs));
     char playerName[16]="";
-    while(state!=STATE_EXIT && !WindowShouldClose()){
+
+    while(state!=STATE_EXIT){
         BeginDrawing();
         ClearBackground(BLACK);
+
         if (state==STATE_MENU){
             int chosen=draw_menu_and_handle_input();
             if (chosen==0) state=STATE_NAME;
@@ -214,6 +199,7 @@ int main(void){
             EndDrawing();
             continue;
         }
+
         if (state==STATE_NAME){
             int key=GetCharPressed();
             while(key>0){
@@ -228,20 +214,41 @@ int main(void){
             if (IsKeyPressed(KEY_ENTER) && strlen(playerName)>0){
                 ia_init();
                 game_init(&gs);
-                if (!gameAssetsLoaded){ gui_load_assets(); gameAssetsLoaded=1; }
                 state=STATE_GAME;
             }
+            if (IsKeyPressed(KEY_ESCAPE)) state=STATE_MENU;
             draw_name_input(playerName);
             EndDrawing();
             continue;
         }
+
         if (state==STATE_RANKING){
-            if (IsKeyPressed(KEY_ESCAPE)) state=STATE_MENU;
-            draw_ranking_screen();
+            if (draw_ranking_screen() || IsKeyPressed(KEY_ESCAPE)) state=STATE_MENU;
             EndDrawing();
             continue;
         }
+
         if (state==STATE_GAME){
+            if (IsKeyPressed(KEY_ESCAPE) || WindowShouldClose()) { state=STATE_EXIT; EndDrawing(); continue; }
+
+            if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_W)) {
+                if (gs.player_pos) gs.player_pos = step_prev(gs.player_pos, gs.map_head);
+            }
+            if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_S)) {
+                if (gs.player_pos) gs.player_pos = step_next(gs.player_pos);
+            }
+
+            if (IsKeyPressed(KEY_H)) {
+                Event top;
+                if (queue_peek(&gs.queue, &top)) {
+                    if (gs.player_pos && top.sector == gs.player_pos->type) {
+                        player_handle_top(&gs);
+                    }
+                }
+            }
+
+            if (IsKeyPressed(KEY_U)) player_undo(&gs);
+
             int time_up = ((gs.now_ms - gs.start_ms) >= (uint64_t)GAME_TOTAL_SECONDS*1000ULL);
             int user_quit = IsKeyPressed(KEY_Q);
             if (time_up || user_quit){
@@ -250,48 +257,21 @@ int main(void){
                 cur.score=gs.score;
                 cur.penalties_soft=gs.penalties_soft;
                 cur.penalties_hard=gs.penalties_hard;
-                Score arr[512];
-                int n=ranking_load(arr,512);
-                finalPos = compute_position_by_score_only(arr,n,cur.score);
-                finalScore = cur.score;
-                strncpy(finalName, cur.name, sizeof(finalName)-1);
-                finalName[sizeof(finalName)-1]='\0';
-                postNext = time_up ? STATE_MENU : STATE_EXIT;
-                game_shutdown(&gs);
-                ia_shutdown();
-                if (gameAssetsLoaded){ gui_unload_assets(); gameAssetsLoaded=0; }
-                state=STATE_POSTGAME;
+                ranking_save_append(&cur);
+                state=STATE_MENU;
                 EndDrawing();
                 continue;
             }
+
             game_tick(&gs);
-            if (IsKeyPressed(KEY_H)) player_handle_top(&gs);
-            if (IsKeyPressed(KEY_U)) player_undo(&gs);
             gui_draw(&gs, WIN_W, WIN_H);
             EndDrawing();
             continue;
         }
-        if (state==STATE_POSTGAME){
-            draw_postgame_screen(finalPos, finalScore);
-            if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-                Score toSave; memset(&toSave,0,sizeof(toSave));
-                strncpy(toSave.name,finalName,sizeof(toSave.name)-1);
-                toSave.score=finalScore;
-                toSave.penalties_soft=0;
-                toSave.penalties_hard=0;
-                ranking_save_append(&toSave);
-                state=STATE_MENU;
-            }
-            EndDrawing();
-            continue;
-        }
+
         EndDrawing();
     }
-    if (state==STATE_GAME){
-        game_shutdown(&gs);
-        ia_shutdown();
-        if (gameAssetsLoaded){ gui_unload_assets(); gameAssetsLoaded=0; }
-    }
+
     unload_menu_assets();
     CloseWindow();
     return 0;

@@ -60,6 +60,9 @@ typedef struct Npc {
     float     patience;
     SectorType preferred;
     uint64_t  wait_start_ms;
+
+    int       entering;
+    float     enter_t;
 } Npc;
 
 typedef struct {
@@ -85,6 +88,8 @@ typedef struct {
     uint64_t last_resolve_ms[SECTOR_COUNT];
     uint64_t next_event_ms[SECTOR_COUNT];
     bool events_initialized;
+
+    bool started;
 } GameState;
 
 typedef struct {
