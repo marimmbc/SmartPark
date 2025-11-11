@@ -19,7 +19,7 @@ Cada evento atendido rapidamente gera **pontos**; atrasos acumulam **penalidades
 
 2. Informe seu nome (até **15 caracteres**) e pressione `Enter`.
 
-3. O relógio começa a contar **(03:00 minutos regressivos)**.
+3. O relógio começa a contar **(01:30 minutos regressivos)**.
    Use o personagem para circular pelos setores e resolver os eventos antes que a fila de crianças fique impaciente.
 
 4. Quando o tempo acaba ou você pressiona `Q`, a pontuação é **salva no ranking**.
